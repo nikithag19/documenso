@@ -188,10 +188,15 @@ export const signFieldWithToken = async ({
   });
 
   const isSignatureField = field.type === FieldType.SIGNATURE || field.type === FieldType.FREE_SIGNATURE;
+  const isStampField = field.type === FieldType.STAMP;
+  // Both signature/free_signature and stamp fields persist their content
+  // through the Signature relation rather than the customText column.
+  const isImageBackedField = isSignatureField || isStampField;
 
-  let customText = !isSignatureField ? value : undefined;
+  let customText = !isImageBackedField ? value : undefined;
 
-  const signatureImageAsBase64 = isSignatureField && isBase64 ? value : undefined;
+  const signatureImageAsBase64 =
+    (isSignatureField && isBase64) || isStampField ? value : undefined;
   const typedSignature = isSignatureField && !isBase64 ? value : undefined;
 
   if (field.type === FieldType.DATE) {
@@ -202,6 +207,10 @@ export const signFieldWithToken = async ({
 
   if (isSignatureField && !signatureImageAsBase64 && !typedSignature) {
     throw new Error('Signature field must have a signature');
+  }
+
+  if (isStampField && !signatureImageAsBase64) {
+    throw new Error('Stamp field must have an image');
   }
 
   if (isSignatureField && documentMeta?.typedSignatureEnabled === false && typedSignature) {
@@ -244,7 +253,7 @@ export const signFieldWithToken = async ({
       },
     });
 
-    if (isSignatureField) {
+    if (isImageBackedField) {
       const signature = await tx.signature.upsert({
         where: {
           fieldId: field.id,
@@ -297,6 +306,14 @@ export const signFieldWithToken = async ({
             .with(FieldType.NUMBER, FieldType.RADIO, FieldType.CHECKBOX, FieldType.DROPDOWN, (type) => ({
               type,
               data: updatedField.customText,
+            }))
+            .with(FieldType.STAMP, (type) => ({
+              type,
+              // For stamp fields the uploaded image is stored on the signature
+              // relation (signatureImageAsBase64) — the customText field holds
+              // an empty string. The audit log records the base64 marker so
+              // it is not conflated with a text signing.
+              data: signatureImageAsBase64 || '',
             }))
             .exhaustive(),
           fieldSecurity: derivedRecipientActionAuth

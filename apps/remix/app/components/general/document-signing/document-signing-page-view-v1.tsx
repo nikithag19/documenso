@@ -42,6 +42,7 @@ import { DocumentSigningNumberField } from '~/components/general/document-signin
 import { DocumentSigningRadioField } from '~/components/general/document-signing/document-signing-radio-field';
 import { DocumentSigningRejectDialog } from '~/components/general/document-signing/document-signing-reject-dialog';
 import { DocumentSigningSignatureField } from '~/components/general/document-signing/document-signing-signature-field';
+import { DocumentSigningStampField } from '~/components/general/document-signing/document-signing-stamp-field';
 import { DocumentSigningTextField } from '~/components/general/document-signing/document-signing-text-field';
 import PDFViewerLazy from '~/components/general/pdf-viewer/pdf-viewer-lazy';
 
@@ -456,6 +457,7 @@ export const DocumentSigningPageViewV1 = ({
                   };
                   return <DocumentSigningDropdownField key={field.id} field={fieldWithMeta} />;
                 })
+                .with(FieldType.STAMP, () => <DocumentSigningStampField key={field.id} field={field} />)
                 .otherwise(() => null),
             )}
         </ElementVisible>

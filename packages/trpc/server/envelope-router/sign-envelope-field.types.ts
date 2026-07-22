@@ -45,6 +45,10 @@ export const ZSignEnvelopeFieldValue = z.discriminatedUnion('type', [
     type: z.literal(FieldType.SIGNATURE),
     value: z.string().nullable(),
   }),
+  z.object({
+    type: z.literal(FieldType.STAMP),
+    value: z.string().nullable().describe('A base64 encoded PNG/JPG data URL for the stamp image'),
+  }),
 ]);
 
 export const ZSignEnvelopeFieldRequestSchema = z.object({

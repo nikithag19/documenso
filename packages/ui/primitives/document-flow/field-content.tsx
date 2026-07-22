@@ -141,6 +141,19 @@ export const FieldContent = ({ field, documentMeta }: FieldIconProps) => {
     );
   }
 
+  if (field.type === FieldType.STAMP && field.signature?.signatureImageAsBase64 && field.inserted) {
+    const stampRotation = field.fieldMeta?.type === 'stamp' ? field.fieldMeta.rotation ?? 0 : 0;
+
+    return (
+      <img
+        src={field.signature.signatureImageAsBase64}
+        alt="Stamp"
+        className="h-full w-full object-contain"
+        style={{ transform: `rotate(${stampRotation}deg)` }}
+      />
+    );
+  }
+
   const labelToDisplay = fieldMeta?.label || _(FRIENDLY_FIELD_TYPE[type]) || '';
   let textToDisplay: string | undefined;
 

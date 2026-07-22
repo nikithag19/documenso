@@ -23,6 +23,7 @@ import {
   ZNameFieldMeta,
   ZNumberFieldMeta,
   ZRadioFieldMeta,
+  ZStampFieldMeta,
   ZTextFieldMeta,
 } from '../../types/field-meta';
 import { getPageSize } from './get-page-size';
@@ -347,6 +348,52 @@ export const insertFieldInPDFV1 = async (pdf: PDFDocument, field: FieldWithSigna
           radio.select(item.value);
         }
       }
+    })
+    .with({ type: FieldType.STAMP }, async (field) => {
+      // The stamp payload is stored on the Signature relation as a base64
+      // data URL of a PNG/JPG. We embed it into the PDF via pdf-lib at the
+      // exact field coordinates, preserving aspect ratio and applying the
+      // rotation stored on the field meta.
+      const imageAsBase64 = field.signature?.signatureImageAsBase64;
+      if (!imageAsBase64) return;
+
+      const stampMeta = ZStampFieldMeta.safeParse(field.fieldMeta);
+      const rotation = stampMeta.success ? stampMeta.data.rotation ?? 0 : 0;
+
+      // Choose the embed function based on the MIME type embedded in the
+      // data URL. pdf-lib requires separate calls for PNG vs JPG.
+      const isJpg = imageAsBase64.startsWith('data:image/jpeg') || imageAsBase64.startsWith('data:image/jpg');
+      const image = await (isJpg ? pdf.embedJpg(imageAsBase64) : pdf.embedPng(imageAsBase64));
+
+      let imageWidth = image.width;
+      let imageHeight = image.height;
+
+      // Preserve aspect ratio: scale to fit inside the field box.
+      const scalingFactor = Math.min(fieldWidth / imageWidth, fieldHeight / imageHeight, 1);
+      imageWidth = imageWidth * scalingFactor;
+      imageHeight = imageHeight * scalingFactor;
+
+      // Centre inside the field box.
+      let imageX = fieldX + (fieldWidth - imageWidth) / 2;
+      let imageY = fieldY + (fieldHeight - imageHeight) / 2;
+
+      // Convert from top-left to bottom-left origin (PDF coordinate system).
+      imageY = pageHeight - imageY - imageHeight;
+
+      if (pageRotationInDegrees !== 0) {
+        const adjustedPosition = adjustPositionForRotation(pageWidth, pageHeight, imageX, imageY, pageRotationInDegrees);
+        imageX = adjustedPosition.xPos;
+        imageY = adjustedPosition.yPos;
+      }
+
+      // Combine the recipient-chosen stamp rotation with the page rotation.
+      page.drawImage(image, {
+        x: imageX,
+        y: imageY,
+        width: imageWidth,
+        height: imageHeight,
+        rotate: degrees(pageRotationInDegrees + rotation),
+      });
     })
     .otherwise((field) => {
       const fieldMetaParsers = {

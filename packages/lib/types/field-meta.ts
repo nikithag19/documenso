@@ -185,6 +185,27 @@ export const ZSignatureFieldMeta = ZBaseFieldMeta.extend({
 
 export type TSignatureFieldMeta = z.infer<typeof ZSignatureFieldMeta>;
 
+/**
+ * The stamp field meta stores the metadata used to place and embed a
+ * user-uploaded image (PNG/JPG) as a stamp on the PDF. The image bytes
+ * themselves are stored on the Signature model (customText/signatureImageAsBase64)
+ * so that we can reuse the same persistence path as image signatures.
+ *
+ * - `rotation` (degrees) — rotation about the field's centre
+ * - `aspectRatio` — width / height of the source image, used to preserve
+ *   the aspect ratio when the user resizes the field on the editor
+ * - `imageFormat` — either 'png' or 'jpg', used when embedding into the PDF
+ *   via pdf-lib (which requires the correct decoder to be selected)
+ */
+export const ZStampFieldMeta = ZBaseFieldMeta.extend({
+  type: z.literal('stamp'),
+  rotation: z.coerce.number().min(-360).max(360).optional().default(0),
+  aspectRatio: z.coerce.number().positive().optional(),
+  imageFormat: z.enum(['png', 'jpg']).optional(),
+});
+
+export type TStampFieldMeta = z.infer<typeof ZStampFieldMeta>;
+
 export const ZFieldMetaNotOptionalSchema = z.discriminatedUnion('type', [
   ZSignatureFieldMeta,
   ZInitialsFieldMeta,
@@ -196,6 +217,7 @@ export const ZFieldMetaNotOptionalSchema = z.discriminatedUnion('type', [
   ZRadioFieldMeta,
   ZCheckboxFieldMeta,
   ZDropdownFieldMeta,
+  ZStampFieldMeta,
 ]);
 
 export type TFieldMetaNotOptionalSchema = z.infer<typeof ZFieldMetaNotOptionalSchema>;
@@ -300,6 +322,10 @@ export const ZFieldAndMetaSchema = z.discriminatedUnion('type', [
     type: z.literal(FieldType.DROPDOWN),
     fieldMeta: ZDropdownFieldMeta.optional(),
   }),
+  z.object({
+    type: z.literal(FieldType.STAMP),
+    fieldMeta: ZStampFieldMeta.optional(),
+  }),
 ]);
 
 export type TFieldAndMeta = z.infer<typeof ZFieldAndMetaSchema>;
@@ -386,6 +412,11 @@ export const FIELD_SIGNATURE_META_DEFAULT_VALUES: TSignatureFieldMeta = {
   overflow: DEFAULT_SIGNATURE_OVERFLOW_MODE,
 };
 
+export const FIELD_STAMP_META_DEFAULT_VALUES: TStampFieldMeta = {
+  type: 'stamp',
+  rotation: 0,
+};
+
 export const FIELD_META_DEFAULT_VALUES: Record<FieldType, TFieldMetaSchema> = {
   [FieldType.SIGNATURE]: FIELD_SIGNATURE_META_DEFAULT_VALUES,
   [FieldType.FREE_SIGNATURE]: undefined,
@@ -398,6 +429,7 @@ export const FIELD_META_DEFAULT_VALUES: Record<FieldType, TFieldMetaSchema> = {
   [FieldType.RADIO]: FIELD_RADIO_META_DEFAULT_VALUES,
   [FieldType.CHECKBOX]: FIELD_CHECKBOX_META_DEFAULT_VALUES,
   [FieldType.DROPDOWN]: FIELD_DROPDOWN_META_DEFAULT_VALUES,
+  [FieldType.STAMP]: FIELD_STAMP_META_DEFAULT_VALUES,
 } as const;
 
 export const ZEnvelopeFieldAndMetaSchema = z.discriminatedUnion('type', [
@@ -444,6 +476,10 @@ export const ZEnvelopeFieldAndMetaSchema = z.discriminatedUnion('type', [
   z.object({
     type: z.literal(FieldType.DROPDOWN),
     fieldMeta: ZDropdownFieldMeta.optional().default(FIELD_DROPDOWN_META_DEFAULT_VALUES),
+  }),
+  z.object({
+    type: z.literal(FieldType.STAMP),
+    fieldMeta: ZStampFieldMeta.optional().default(FIELD_STAMP_META_DEFAULT_VALUES),
   }),
 ]);
 
