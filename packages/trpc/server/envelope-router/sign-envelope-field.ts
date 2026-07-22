@@ -81,12 +81,12 @@ export const signEnvelopeFieldRoute = procedure
     }
 
     if (
-      field.type === FieldType.SIGNATURE &&
+      (field.type === FieldType.SIGNATURE || field.type === FieldType.STAMP) &&
       recipient.id !== field.recipientId &&
       recipient.role === RecipientRole.ASSISTANT
     ) {
       throw new AppError(AppErrorCode.INVALID_REQUEST, {
-        message: `Assistant recipients cannot sign signature fields`,
+        message: `Assistant recipients cannot sign signature or stamp fields`,
       });
     }
 
@@ -198,6 +198,18 @@ export const signEnvelopeFieldRoute = procedure
       }
     }
 
+    if (field.type === FieldType.STAMP) {
+      if (fieldValue.type !== FieldType.STAMP) {
+        throw new AppError(AppErrorCode.INVALID_REQUEST, {
+          message: `Field ${fieldId} is not a stamp field`,
+        });
+      }
+
+      if (fieldValue.value) {
+        signatureImageAsBase64 = fieldValue.value;
+      }
+    }
+
     return await prisma.$transaction(async (tx) => {
       const updatedField = await tx.field.update({
         where: {
@@ -212,7 +224,7 @@ export const signEnvelopeFieldRoute = procedure
         },
       });
 
-      if (field.type === FieldType.SIGNATURE) {
+      if (field.type === FieldType.SIGNATURE || field.type === FieldType.STAMP) {
         const signature = await tx.signature.upsert({
           where: {
             fieldId: field.id,
@@ -254,7 +266,7 @@ export const signEnvelopeFieldRoute = procedure
             recipientRole: recipient.role,
             fieldId: updatedField.secondaryId,
             field: match(updatedField.type)
-              .with(FieldType.SIGNATURE, FieldType.FREE_SIGNATURE, (type) => ({
+              .with(FieldType.SIGNATURE, FieldType.FREE_SIGNATURE, FieldType.STAMP, (type) => ({
                 type,
                 data: signatureImageAsBase64 || typedSignature || '',
               }))

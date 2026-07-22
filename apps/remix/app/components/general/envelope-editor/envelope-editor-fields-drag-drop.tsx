@@ -18,6 +18,7 @@ import {
   ContactIcon,
   DiscIcon,
   HashIcon,
+  ImagePlusIcon,
   ListIcon,
   MailIcon,
   TextIcon,
@@ -82,6 +83,11 @@ export const fieldButtonList = [
     type: FieldType.DROPDOWN,
     icon: ListIcon,
     name: msg`Dropdown`,
+  },
+  {
+    type: FieldType.STAMP,
+    icon: ImagePlusIcon,
+    name: msg`Stamp`,
   },
 ];
 

@@ -624,7 +624,7 @@ export const createDocumentFromDirectTemplate = async ({
             recipientRole: createdDirectRecipient.role,
             fieldId: field.secondaryId,
             field: match(field.type)
-              .with(FieldType.SIGNATURE, FieldType.FREE_SIGNATURE, (type) => ({
+              .with(FieldType.SIGNATURE, FieldType.FREE_SIGNATURE, FieldType.STAMP, (type) => ({
                 type,
                 data: field.signature?.signatureImageAsBase64 || field.signature?.typedSignature || '',
               }))

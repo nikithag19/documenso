@@ -65,6 +65,7 @@ export const parseFieldTypeFromPlaceholder = (fieldTypeString: string): FieldTyp
     .with('RADIO', () => FieldType.RADIO)
     .with('CHECKBOX', () => FieldType.CHECKBOX)
     .with('DROPDOWN', () => FieldType.DROPDOWN)
+    .with('STAMP', () => FieldType.STAMP)
     .otherwise(() => {
       throw new AppError(AppErrorCode.INVALID_BODY, {
         message: `Invalid field type: ${fieldTypeString}`,
@@ -81,7 +82,7 @@ export const parseFieldMetaFromPlaceholder = (
   rawFieldMeta: Record<string, string>,
   fieldType: FieldType,
 ): Record<string, unknown> | undefined => {
-  if (fieldType === FieldType.SIGNATURE || fieldType === FieldType.FREE_SIGNATURE) {
+  if (fieldType === FieldType.SIGNATURE || fieldType === FieldType.FREE_SIGNATURE || fieldType === FieldType.STAMP) {
     return;
   }
 

@@ -126,6 +126,54 @@ export const insertFieldInPDFV1 = async (pdf: PDFDocument, field: FieldWithSigna
   await match(field)
     .with(
       {
+        type: FieldType.STAMP,
+      },
+      async (field) => {
+        if (field.signature?.signatureImageAsBase64) {
+          const image = await pdf.embedPng(field.signature.signatureImageAsBase64);
+
+          let imageWidth = image.width;
+          let imageHeight = image.height;
+
+          const scalingFactor = Math.min(fieldWidth / imageWidth, fieldHeight / imageHeight, 1);
+
+          imageWidth = imageWidth * scalingFactor;
+          imageHeight = imageHeight * scalingFactor;
+
+          let imageX = fieldX + (fieldWidth - imageWidth) / 2;
+          let imageY = fieldY + (fieldHeight - imageHeight) / 2;
+
+          // Invert the Y axis since PDFs use a bottom-left coordinate system
+          imageY = pageHeight - imageY - imageHeight;
+
+          const stampMeta = field.fieldMeta as { rotation?: number } | null;
+          const stampRotation = (stampMeta?.rotation ?? 0) + pageRotationInDegrees;
+
+          if (pageRotationInDegrees !== 0) {
+            const adjustedPosition = adjustPositionForRotation(
+              pageWidth,
+              pageHeight,
+              imageX,
+              imageY,
+              pageRotationInDegrees,
+            );
+
+            imageX = adjustedPosition.xPos;
+            imageY = adjustedPosition.yPos;
+          }
+
+          page.drawImage(image, {
+            x: imageX,
+            y: imageY,
+            width: imageWidth,
+            height: imageHeight,
+            rotate: degrees(stampRotation),
+          });
+        }
+      },
+    )
+    .with(
+      {
         type: P.union(FieldType.SIGNATURE, FieldType.FREE_SIGNATURE),
       },
       async (field) => {

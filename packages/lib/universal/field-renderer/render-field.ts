@@ -11,6 +11,7 @@ import { renderDropdownFieldElement } from './render-dropdown-field';
 import { renderGenericTextFieldElement } from './render-generic-text-field';
 import { renderRadioFieldElement } from './render-radio-field';
 import { renderSignatureFieldElement } from './render-signature-field';
+import { renderStampFieldElement } from './render-stamp-field';
 
 export const MIN_FIELD_HEIGHT_PX = 12;
 export const MIN_FIELD_WIDTH_PX = 36;
@@ -68,5 +69,6 @@ export const renderField = ({
     .with(FieldType.FREE_SIGNATURE, () => {
       throw new Error('Free signature fields are not supported');
     })
+    .with(FieldType.STAMP, () => renderStampFieldElement(field, options))
     .exhaustive();
 };

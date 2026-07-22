@@ -249,5 +249,20 @@ export const extractFieldInsertionValues = ({
         inserted: true,
       };
     })
+    .with({ type: FieldType.STAMP }, (fieldValue) => {
+      const { value } = fieldValue;
+
+      if (!value) {
+        return {
+          customText: '',
+          inserted: false,
+        };
+      }
+
+      return {
+        customText: '',
+        inserted: true,
+      };
+    })
     .exhaustive();
 };

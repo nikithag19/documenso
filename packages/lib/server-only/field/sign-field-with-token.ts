@@ -187,12 +187,13 @@ export const signFieldWithToken = async ({
     },
   });
 
-  const isSignatureField = field.type === FieldType.SIGNATURE || field.type === FieldType.FREE_SIGNATURE;
+  const isSignatureField =
+    field.type === FieldType.SIGNATURE || field.type === FieldType.FREE_SIGNATURE || field.type === FieldType.STAMP;
 
   let customText = !isSignatureField ? value : undefined;
 
   const signatureImageAsBase64 = isSignatureField && isBase64 ? value : undefined;
-  const typedSignature = isSignatureField && !isBase64 ? value : undefined;
+  const typedSignature = isSignatureField && !isBase64 && field.type !== FieldType.STAMP ? value : undefined;
 
   if (field.type === FieldType.DATE) {
     customText = DateTime.now()
@@ -286,7 +287,7 @@ export const signFieldWithToken = async ({
           recipientRole: recipient.role,
           fieldId: updatedField.secondaryId,
           field: match(updatedField.type)
-            .with(FieldType.SIGNATURE, FieldType.FREE_SIGNATURE, (type) => ({
+            .with(FieldType.SIGNATURE, FieldType.FREE_SIGNATURE, FieldType.STAMP, (type) => ({
               type,
               data: signatureImageAsBase64 || typedSignature || '',
             }))
