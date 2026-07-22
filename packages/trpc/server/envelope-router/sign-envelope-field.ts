@@ -198,6 +198,28 @@ export const signEnvelopeFieldRoute = procedure
       }
     }
 
+    // Stamp fields piggy-back on the Signature table's base64 column for image
+    // storage since the payload shape (image tied to a field) matches.
+    if (field.type === FieldType.STAMP) {
+      if (fieldValue.type !== FieldType.STAMP) {
+        throw new AppError(AppErrorCode.INVALID_REQUEST, {
+          message: `Field ${fieldId} is not a stamp field`,
+        });
+      }
+
+      if (fieldValue.value) {
+        const isBase64 = isBase64Image(fieldValue.value);
+
+        if (!isBase64) {
+          throw new AppError(AppErrorCode.INVALID_REQUEST, {
+            message: 'Stamp field must have a base64 image value',
+          });
+        }
+
+        signatureImageAsBase64 = fieldValue.value;
+      }
+    }
+
     return await prisma.$transaction(async (tx) => {
       const updatedField = await tx.field.update({
         where: {
@@ -212,7 +234,7 @@ export const signEnvelopeFieldRoute = procedure
         },
       });
 
-      if (field.type === FieldType.SIGNATURE) {
+      if (field.type === FieldType.SIGNATURE || field.type === FieldType.STAMP) {
         const signature = await tx.signature.upsert({
           where: {
             fieldId: field.id,
@@ -257,6 +279,10 @@ export const signEnvelopeFieldRoute = procedure
               .with(FieldType.SIGNATURE, FieldType.FREE_SIGNATURE, (type) => ({
                 type,
                 data: signatureImageAsBase64 || typedSignature || '',
+              }))
+              .with(FieldType.STAMP, (type) => ({
+                type,
+                data: signatureImageAsBase64 || '',
               }))
               .with(FieldType.DATE, FieldType.EMAIL, FieldType.NAME, FieldType.TEXT, FieldType.INITIALS, (type) => ({
                 type,

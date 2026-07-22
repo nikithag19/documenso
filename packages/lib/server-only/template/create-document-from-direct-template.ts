@@ -290,10 +290,14 @@ export const createDocumentFromDirectTemplate = async ({
 
       const isSignatureField =
         templateField.type === FieldType.SIGNATURE || templateField.type === FieldType.FREE_SIGNATURE;
+      const isStampField = templateField.type === FieldType.STAMP;
+      // Same storage path as signatures — the value is a base64 image sitting on the
+      // Signature row.
+      const isImageBackedField = isSignatureField || isStampField;
 
-      let customText = !isSignatureField ? value : '';
+      let customText = !isImageBackedField ? value : '';
 
-      const signatureImageAsBase64 = isSignatureField && isBase64 ? value : undefined;
+      const signatureImageAsBase64 = isImageBackedField && isBase64 ? value : undefined;
       const typedSignature = isSignatureField && !isBase64 ? value : undefined;
 
       if (templateField.type === FieldType.DATE) {
@@ -304,11 +308,15 @@ export const createDocumentFromDirectTemplate = async ({
         throw new Error('Signature field must have a signature');
       }
 
+      if (isStampField && !signatureImageAsBase64) {
+        throw new Error('Stamp field must have an uploaded image');
+      }
+
       return {
         templateField,
         customText,
         derivedRecipientActionAuth,
-        signature: isSignatureField
+        signature: isImageBackedField
           ? {
               signatureImageAsBase64,
               typedSignature,
@@ -627,6 +635,10 @@ export const createDocumentFromDirectTemplate = async ({
               .with(FieldType.SIGNATURE, FieldType.FREE_SIGNATURE, (type) => ({
                 type,
                 data: field.signature?.signatureImageAsBase64 || field.signature?.typedSignature || '',
+              }))
+              .with(FieldType.STAMP, (type) => ({
+                type,
+                data: field.signature?.signatureImageAsBase64 || '',
               }))
               .with(
                 FieldType.DATE,

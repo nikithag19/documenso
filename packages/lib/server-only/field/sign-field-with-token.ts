@@ -34,6 +34,14 @@ export type SignFieldWithTokenOptions = {
   isBase64?: boolean;
   userId?: number;
   authOptions?: TRecipientActionAuth;
+  /**
+   * Optional stamp-only transform metadata (rotation, aspect ratio) that will
+   * be persisted onto the field's fieldMeta column when the field is a STAMP.
+   */
+  stampMeta?: {
+    rotation?: number;
+    aspectRatio?: number;
+  };
   requestMetadata?: RequestMetadata;
 };
 
@@ -54,6 +62,7 @@ export const signFieldWithToken = async ({
   isBase64,
   userId,
   authOptions,
+  stampMeta,
   requestMetadata,
 }: SignFieldWithTokenOptions) => {
   const recipient = await prisma.recipient.findFirstOrThrow({
@@ -188,10 +197,14 @@ export const signFieldWithToken = async ({
   });
 
   const isSignatureField = field.type === FieldType.SIGNATURE || field.type === FieldType.FREE_SIGNATURE;
+  const isStampField = field.type === FieldType.STAMP;
+  // Stamp fields piggy-back on the Signature table for their image storage since
+  // the storage shape (base64 image tied to a field) is identical.
+  const isImageBackedField = isSignatureField || isStampField;
 
-  let customText = !isSignatureField ? value : undefined;
+  let customText = !isImageBackedField ? value : undefined;
 
-  const signatureImageAsBase64 = isSignatureField && isBase64 ? value : undefined;
+  const signatureImageAsBase64 = isImageBackedField && isBase64 ? value : undefined;
   const typedSignature = isSignatureField && !isBase64 ? value : undefined;
 
   if (field.type === FieldType.DATE) {
@@ -202,6 +215,10 @@ export const signFieldWithToken = async ({
 
   if (isSignatureField && !signatureImageAsBase64 && !typedSignature) {
     throw new Error('Signature field must have a signature');
+  }
+
+  if (isStampField && !signatureImageAsBase64) {
+    throw new Error('Stamp field must have an uploaded image');
   }
 
   if (isSignatureField && documentMeta?.typedSignatureEnabled === false && typedSignature) {
@@ -233,6 +250,24 @@ export const signFieldWithToken = async ({
 
   const assistant = recipient.role === RecipientRole.ASSISTANT ? recipient : undefined;
 
+  // For stamp fields, merge the client-provided transform into the existing fieldMeta.
+  // Keeps `type: 'stamp'` invariant and any other future fields intact.
+  let nextFieldMeta: Record<string, unknown> | undefined;
+  if (isStampField) {
+    const existing: Record<string, unknown> =
+      field.fieldMeta && typeof field.fieldMeta === 'object' && !Array.isArray(field.fieldMeta)
+        ? // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+          (field.fieldMeta as Record<string, unknown>)
+        : {};
+
+    nextFieldMeta = {
+      ...existing,
+      type: 'stamp',
+      rotation: stampMeta?.rotation ?? existing.rotation ?? 0,
+      aspectRatio: stampMeta?.aspectRatio ?? existing.aspectRatio,
+    };
+  }
+
   return await prisma.$transaction(async (tx) => {
     const updatedField = await tx.field.update({
       where: {
@@ -241,10 +276,11 @@ export const signFieldWithToken = async ({
       data: {
         customText,
         inserted: true,
+        ...(nextFieldMeta ? { fieldMeta: nextFieldMeta } : {}),
       },
     });
 
-    if (isSignatureField) {
+    if (isImageBackedField) {
       const signature = await tx.signature.upsert({
         where: {
           fieldId: field.id,
@@ -289,6 +325,10 @@ export const signFieldWithToken = async ({
             .with(FieldType.SIGNATURE, FieldType.FREE_SIGNATURE, (type) => ({
               type,
               data: signatureImageAsBase64 || typedSignature || '',
+            }))
+            .with(FieldType.STAMP, (type) => ({
+              type,
+              data: signatureImageAsBase64 || '',
             }))
             .with(FieldType.DATE, FieldType.EMAIL, FieldType.NAME, FieldType.TEXT, FieldType.INITIALS, (type) => ({
               type,

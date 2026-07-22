@@ -40,6 +40,7 @@ import {
   Disc,
   Hash,
   Mail,
+  Stamp,
   Type,
   User,
 } from 'lucide-react';
@@ -931,6 +932,31 @@ export const AddTemplateFieldsFormPartial = ({
                           >
                             <ChevronDown className="h-4 w-4" />
                             <Trans>Dropdown</Trans>
+                          </p>
+                        </CardContent>
+                      </Card>
+                    </button>
+
+                    <button
+                      type="button"
+                      className="group h-full w-full"
+                      onClick={() => setSelectedField(FieldType.STAMP)}
+                      onMouseDown={() => setSelectedField(FieldType.STAMP)}
+                      data-selected={selectedField === FieldType.STAMP ? true : undefined}
+                    >
+                      <Card
+                        className={cn(
+                          'flex h-full w-full cursor-pointer items-center justify-center group-disabled:opacity-50',
+                        )}
+                      >
+                        <CardContent className="p-4">
+                          <p
+                            className={cn(
+                              'flex items-center justify-center gap-x-1.5 font-normal text-muted-foreground text-sm group-data-[selected]:text-foreground',
+                            )}
+                          >
+                            <Stamp className="h-4 w-4" />
+                            <Trans>Stamp</Trans>
                           </p>
                         </CardContent>
                       </Card>

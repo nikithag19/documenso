@@ -249,5 +249,26 @@ export const extractFieldInsertionValues = ({
         inserted: true,
       };
     })
+    .with({ type: FieldType.STAMP }, (fieldValue) => {
+      const { value } = fieldValue;
+
+      if (!value) {
+        return {
+          customText: '',
+          inserted: false,
+        };
+      }
+
+      if (!isBase64Image(value)) {
+        throw new AppError(AppErrorCode.INVALID_BODY, {
+          message: 'Stamp field must have an uploaded image',
+        });
+      }
+
+      return {
+        customText: '',
+        inserted: true,
+      };
+    })
     .exhaustive();
 };

@@ -70,6 +70,7 @@ const FieldSettingsTypeTranslations: Record<FieldType, MessageDescriptor> = {
   [FieldType.RADIO]: msg`Radio Settings`,
   [FieldType.CHECKBOX]: msg`Checkbox Settings`,
   [FieldType.DROPDOWN]: msg`Dropdown Settings`,
+  [FieldType.STAMP]: msg`Stamp Settings`,
 };
 
 export const EnvelopeEditorFieldsPage = () => {

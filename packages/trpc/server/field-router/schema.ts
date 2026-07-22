@@ -149,12 +149,26 @@ export const ZSetFieldsForTemplateResponseSchema = z.object({
   fields: z.array(ZFieldSchema),
 });
 
+/**
+ * Optional stamp-only transform metadata forwarded during signing so the server
+ * can persist rotation / aspect ratio alongside the uploaded stamp image.
+ *
+ * Only consumed when the target field is a STAMP field; ignored otherwise.
+ */
+export const ZSignFieldStampMetaSchema = z.object({
+  rotation: z.number().min(-360).max(360).optional(),
+  aspectRatio: z.number().positive().optional(),
+});
+
+export type TSignFieldStampMetaSchema = z.infer<typeof ZSignFieldStampMetaSchema>;
+
 export const ZSignFieldWithTokenMutationSchema = z.object({
   token: z.string(),
   fieldId: z.number(),
   value: z.string().trim().optional(),
   isBase64: z.boolean().optional(),
   authOptions: ZRecipientActionAuthSchema.optional(),
+  stampMeta: ZSignFieldStampMetaSchema.optional(),
 });
 
 export type TSignFieldWithTokenMutationSchema = z.infer<typeof ZSignFieldWithTokenMutationSchema>;

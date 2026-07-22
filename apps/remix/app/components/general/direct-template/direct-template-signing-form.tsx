@@ -40,6 +40,7 @@ import { DocumentSigningCheckboxField } from '~/components/general/document-sign
 import { DocumentSigningCompleteDialog } from '~/components/general/document-signing/document-signing-complete-dialog';
 import { DocumentSigningDateField } from '~/components/general/document-signing/document-signing-date-field';
 import { DocumentSigningDropdownField } from '~/components/general/document-signing/document-signing-dropdown-field';
+import { DocumentSigningStampField } from '~/components/general/document-signing/document-signing-stamp-field';
 import { DocumentSigningEmailField } from '~/components/general/document-signing/document-signing-email-field';
 import { DocumentSigningInitialsField } from '~/components/general/document-signing/document-signing-initials-field';
 import { DocumentSigningNameField } from '~/components/general/document-signing/document-signing-name-field';
@@ -380,6 +381,14 @@ export const DirectTemplateSigningForm = ({
                   />
                 );
               })
+              .with(FieldType.STAMP, () => (
+                <DocumentSigningStampField
+                  key={field.id}
+                  field={field}
+                  onSignField={onSignField}
+                  onUnsignField={onUnsignField}
+                />
+              ))
               .otherwise(() => null),
           )}
         </ElementVisible>

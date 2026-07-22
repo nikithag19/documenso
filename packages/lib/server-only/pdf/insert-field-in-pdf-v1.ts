@@ -23,6 +23,7 @@ import {
   ZNameFieldMeta,
   ZNumberFieldMeta,
   ZRadioFieldMeta,
+  ZStampFieldMeta,
   ZTextFieldMeta,
 } from '../../types/field-meta';
 import { getPageSize } from './get-page-size';
@@ -210,6 +211,86 @@ export const insertFieldInPDFV1 = async (pdf: PDFDocument, field: FieldWithSigna
         }
       },
     )
+    .with({ type: FieldType.STAMP }, async (field) => {
+      // Stamp images are stored on the associated Signature row (same column
+      // signatures use). If none is present the field wasn't signed, so we skip.
+      if (!field.signature?.signatureImageAsBase64) {
+        return;
+      }
+
+      const stampImageBase64 = field.signature.signatureImageAsBase64;
+
+      // PDFs only accept raw image bytes; we accept PNG or JPG.
+      const image = await (stampImageBase64.startsWith('data:image/jpeg') || stampImageBase64.startsWith('data:image/jpg')
+        ? pdf.embedJpg(stampImageBase64)
+        : pdf.embedPng(stampImageBase64));
+
+      const stampMeta = ZStampFieldMeta.safeParse(field.fieldMeta);
+      const stampRotationDegrees = stampMeta.success ? stampMeta.data.rotation ?? 0 : 0;
+
+      // Fit within the field bounds while preserving the intrinsic aspect ratio.
+      let imageWidth = image.width;
+      let imageHeight = image.height;
+
+      const scalingFactor = Math.min(fieldWidth / imageWidth, fieldHeight / imageHeight, 1);
+
+      imageWidth = imageWidth * scalingFactor;
+      imageHeight = imageHeight * scalingFactor;
+
+      let imageX = fieldX + (fieldWidth - imageWidth) / 2;
+      let imageY = fieldY + (fieldHeight - imageHeight) / 2;
+
+      // Invert Y since PDFs use a bottom-left coordinate system.
+      imageY = pageHeight - imageY - imageHeight;
+
+      if (pageRotationInDegrees !== 0) {
+        const adjustedPosition = adjustPositionForRotation(
+          pageWidth,
+          pageHeight,
+          imageX,
+          imageY,
+          pageRotationInDegrees,
+        );
+
+        imageX = adjustedPosition.xPos;
+        imageY = adjustedPosition.yPos;
+      }
+
+      // Combine the page rotation with any per-stamp rotation the recipient
+      // applied. Note: pdf-lib rotates about the bottom-left corner of the
+      // drawn image, so we translate to the image centre to make rotation feel
+      // natural (pivots around the middle of the field).
+      const totalRotation = (pageRotationInDegrees + stampRotationDegrees) % 360;
+
+      if (totalRotation === 0) {
+        page.drawImage(image, {
+          x: imageX,
+          y: imageY,
+          width: imageWidth,
+          height: imageHeight,
+        });
+      } else {
+        const radians = (totalRotation * Math.PI) / 180;
+        const centreX = imageX + imageWidth / 2;
+        const centreY = imageY + imageHeight / 2;
+
+        // Rotate around the image centre by translating the anchor back after
+        // applying the rotation about the bottom-left origin.
+        const cos = Math.cos(radians);
+        const sin = Math.sin(radians);
+
+        const rotatedX = centreX - (imageWidth / 2) * cos + (imageHeight / 2) * sin;
+        const rotatedY = centreY - (imageWidth / 2) * sin - (imageHeight / 2) * cos;
+
+        page.drawImage(image, {
+          x: rotatedX,
+          y: rotatedY,
+          width: imageWidth,
+          height: imageHeight,
+          rotate: degrees(totalRotation),
+        });
+      }
+    })
     .with({ type: FieldType.CHECKBOX }, (field) => {
       const meta = ZCheckboxFieldMeta.safeParse(field.fieldMeta);
 
