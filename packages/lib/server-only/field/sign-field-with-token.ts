@@ -294,10 +294,17 @@ export const signFieldWithToken = async ({
               type,
               data: updatedField.customText,
             }))
-            .with(FieldType.NUMBER, FieldType.RADIO, FieldType.CHECKBOX, FieldType.DROPDOWN, (type) => ({
-              type,
-              data: updatedField.customText,
-            }))
+            .with(
+              FieldType.NUMBER,
+              FieldType.RADIO,
+              FieldType.CHECKBOX,
+              FieldType.DROPDOWN,
+              FieldType.STAMP,
+              (type) => ({
+                type,
+                data: updatedField.customText,
+              }),
+            )
             .exhaustive(),
           fieldSecurity: derivedRecipientActionAuth
             ? {

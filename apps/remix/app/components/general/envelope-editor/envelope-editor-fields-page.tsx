@@ -15,6 +15,7 @@ import {
   type TNumberFieldMeta,
   type TRadioFieldMeta,
   type TSignatureFieldMeta,
+  type TStampFieldMeta,
   type TTextFieldMeta,
 } from '@documenso/lib/types/field-meta';
 import { getEnvelopeItemPermissions } from '@documenso/lib/utils/envelope';
@@ -48,6 +49,7 @@ import { EditorFieldNameForm } from '~/components/forms/editor/editor-field-name
 import { EditorFieldNumberForm } from '~/components/forms/editor/editor-field-number-form';
 import { EditorFieldRadioForm } from '~/components/forms/editor/editor-field-radio-form';
 import { EditorFieldSignatureForm } from '~/components/forms/editor/editor-field-signature-form';
+import { EditorFieldStampForm } from '~/components/forms/editor/editor-field-stamp-form';
 import { EditorFieldTextForm } from '~/components/forms/editor/editor-field-text-form';
 import { EnvelopePdfViewer } from '~/components/general/pdf-viewer/envelope-pdf-viewer';
 import { useCurrentTeam } from '~/providers/team';
@@ -70,6 +72,7 @@ const FieldSettingsTypeTranslations: Record<FieldType, MessageDescriptor> = {
   [FieldType.RADIO]: msg`Radio Settings`,
   [FieldType.CHECKBOX]: msg`Checkbox Settings`,
   [FieldType.DROPDOWN]: msg`Dropdown Settings`,
+  [FieldType.STAMP]: msg`Stamp Settings`,
 };
 
 export const EnvelopeEditorFieldsPage = () => {
@@ -505,6 +508,12 @@ export const EnvelopeEditorFieldsPage = () => {
                     .with(FieldType.TEXT, () => (
                       <EditorFieldTextForm
                         value={selectedField?.fieldMeta as TTextFieldMeta | undefined}
+                        onValueChange={(value) => updateSelectedFieldMeta(value)}
+                      />
+                    ))
+                    .with(FieldType.STAMP, () => (
+                      <EditorFieldStampForm
+                        value={selectedField?.fieldMeta as TStampFieldMeta | undefined}
                         onValueChange={(value) => updateSelectedFieldMeta(value)}
                       />
                     ))

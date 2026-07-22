@@ -682,6 +682,7 @@ enum FieldType {
   RADIO
   CHECKBOX
   DROPDOWN
+  STAMP
 }
 
 /// @zod.import(["import { ZFieldMetaNotOptionalSchema } from '@documenso/lib/types/field-meta';"])

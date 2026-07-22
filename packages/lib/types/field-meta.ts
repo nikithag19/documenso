@@ -185,6 +185,44 @@ export const ZSignatureFieldMeta = ZBaseFieldMeta.extend({
 
 export type TSignatureFieldMeta = z.infer<typeof ZSignatureFieldMeta>;
 
+/**
+ * The rotation range for a stamp image, in degrees.
+ *
+ * Kept as a full 0-360 range so the rotation handle in the editor can spin the
+ * stamp to any angle, and so the same angle can be reproduced exactly when the
+ * image is embedded into the sealed PDF.
+ */
+export const FIELD_STAMP_MIN_ROTATION = 0;
+export const FIELD_STAMP_MAX_ROTATION = 360;
+
+/**
+ * Stamp field.
+ *
+ * An image (PNG/JPG) placed by the author onto the document. The image itself is
+ * stored inline as a base64 data URL so the field is fully self-contained and
+ * round-trips through save/reload without any extra file storage.
+ *
+ * `imageWidth`/`imageHeight` hold the intrinsic pixel dimensions of the uploaded
+ * image so the aspect ratio can be preserved when rendering in the editor and
+ * when embedding into the PDF. `rotation` is the clockwise rotation in degrees
+ * applied about the centre of the field.
+ */
+export const ZStampFieldMeta = ZBaseFieldMeta.extend({
+  type: z.literal('stamp'),
+  imageBase64: z.string().optional(),
+  imageWidth: z.number().positive().optional(),
+  imageHeight: z.number().positive().optional(),
+  rotation: z.coerce
+    .number()
+    .min(FIELD_STAMP_MIN_ROTATION)
+    .max(FIELD_STAMP_MAX_ROTATION)
+    .optional()
+    .default(0)
+    .describe('The clockwise rotation of the stamp image in degrees'),
+});
+
+export type TStampFieldMeta = z.infer<typeof ZStampFieldMeta>;
+
 export const ZFieldMetaNotOptionalSchema = z.discriminatedUnion('type', [
   ZSignatureFieldMeta,
   ZInitialsFieldMeta,
@@ -196,6 +234,7 @@ export const ZFieldMetaNotOptionalSchema = z.discriminatedUnion('type', [
   ZRadioFieldMeta,
   ZCheckboxFieldMeta,
   ZDropdownFieldMeta,
+  ZStampFieldMeta,
 ]);
 
 export type TFieldMetaNotOptionalSchema = z.infer<typeof ZFieldMetaNotOptionalSchema>;
@@ -300,6 +339,10 @@ export const ZFieldAndMetaSchema = z.discriminatedUnion('type', [
     type: z.literal(FieldType.DROPDOWN),
     fieldMeta: ZDropdownFieldMeta.optional(),
   }),
+  z.object({
+    type: z.literal(FieldType.STAMP),
+    fieldMeta: ZStampFieldMeta.optional(),
+  }),
 ]);
 
 export type TFieldAndMeta = z.infer<typeof ZFieldAndMetaSchema>;
@@ -386,6 +429,11 @@ export const FIELD_SIGNATURE_META_DEFAULT_VALUES: TSignatureFieldMeta = {
   overflow: DEFAULT_SIGNATURE_OVERFLOW_MODE,
 };
 
+export const FIELD_STAMP_META_DEFAULT_VALUES: TStampFieldMeta = {
+  type: 'stamp',
+  rotation: 0,
+};
+
 export const FIELD_META_DEFAULT_VALUES: Record<FieldType, TFieldMetaSchema> = {
   [FieldType.SIGNATURE]: FIELD_SIGNATURE_META_DEFAULT_VALUES,
   [FieldType.FREE_SIGNATURE]: undefined,
@@ -398,6 +446,7 @@ export const FIELD_META_DEFAULT_VALUES: Record<FieldType, TFieldMetaSchema> = {
   [FieldType.RADIO]: FIELD_RADIO_META_DEFAULT_VALUES,
   [FieldType.CHECKBOX]: FIELD_CHECKBOX_META_DEFAULT_VALUES,
   [FieldType.DROPDOWN]: FIELD_DROPDOWN_META_DEFAULT_VALUES,
+  [FieldType.STAMP]: FIELD_STAMP_META_DEFAULT_VALUES,
 } as const;
 
 export const ZEnvelopeFieldAndMetaSchema = z.discriminatedUnion('type', [
@@ -444,6 +493,10 @@ export const ZEnvelopeFieldAndMetaSchema = z.discriminatedUnion('type', [
   z.object({
     type: z.literal(FieldType.DROPDOWN),
     fieldMeta: ZDropdownFieldMeta.optional().default(FIELD_DROPDOWN_META_DEFAULT_VALUES),
+  }),
+  z.object({
+    type: z.literal(FieldType.STAMP),
+    fieldMeta: ZStampFieldMeta.optional().default(FIELD_STAMP_META_DEFAULT_VALUES),
   }),
 ]);
 

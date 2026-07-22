@@ -16,6 +16,13 @@ export const ADVANCED_FIELD_TYPES_WITH_OPTIONAL_SETTING: FieldType[] = [
  * Whether a field is required to be inserted.
  */
 export const isRequiredField = (field: Field) => {
+  // Stamp fields are placed and filled entirely by the author, so they never
+  // require any recipient action to insert. Treating them as required would
+  // block recipients from completing the document.
+  if (field.type === FieldType.STAMP) {
+    return false;
+  }
+
   // All fields without the optional metadata are assumed to be required.
   if (!ADVANCED_FIELD_TYPES_WITH_OPTIONAL_SETTING.includes(field.type)) {
     return true;

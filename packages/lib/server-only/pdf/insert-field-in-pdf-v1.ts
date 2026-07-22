@@ -23,6 +23,7 @@ import {
   ZNameFieldMeta,
   ZNumberFieldMeta,
   ZRadioFieldMeta,
+  ZStampFieldMeta,
   ZTextFieldMeta,
 } from '../../types/field-meta';
 import { getPageSize } from './get-page-size';
@@ -210,6 +211,89 @@ export const insertFieldInPDFV1 = async (pdf: PDFDocument, field: FieldWithSigna
         }
       },
     )
+    .with({ type: FieldType.STAMP }, async (field) => {
+      const meta = ZStampFieldMeta.safeParse(field.fieldMeta);
+
+      if (!meta.success) {
+        console.error(meta.error);
+
+        throw new Error('Invalid stamp field meta');
+      }
+
+      const imageBase64 = meta.data.imageBase64;
+
+      // No image was uploaded for this stamp, nothing to embed.
+      if (!imageBase64) {
+        return;
+      }
+
+      // Detect the image format from the data URL so we use the correct embedder.
+      // pdf-lib only supports PNG and JPG. Default to PNG which also covers the
+      // common case where the editor normalises uploads to PNG.
+      const isJpg = /^data:image\/jpe?g/i.test(imageBase64);
+      const image = isJpg ? await pdf.embedJpg(imageBase64) : await pdf.embedPng(imageBase64);
+
+      // Fit the image inside the field bounds while preserving the aspect ratio.
+      const scalingFactor = Math.min(fieldWidth / image.width, fieldHeight / image.height, 1);
+
+      const imageWidth = image.width * scalingFactor;
+      const imageHeight = image.height * scalingFactor;
+
+      // Centre of the field in top-left origin (frontend) coordinates.
+      const centreX = fieldX + fieldWidth / 2;
+      const centreYTopLeft = fieldY + fieldHeight / 2;
+
+      // Convert the centre to PDF bottom-left origin coordinates.
+      const centreY = pageHeight - centreYTopLeft;
+
+      const rotationDegrees = meta.data.rotation ?? 0;
+
+      // pdf-lib draws (and rotates) an image about its bottom-left anchor (x, y).
+      // To rotate about the image centre while keeping the centre fixed, we take
+      // the vector from the centre to the bottom-left corner (-w/2, -h/2) and
+      // rotate it by the same angle, then offset the centre by that rotated
+      // vector to obtain the anchor.
+      //
+      // The stamp rotation is authored clockwise in the editor, whereas pdf-lib
+      // rotates counter-clockwise, so the sign is inverted. The page rotation is
+      // added on top so the stamp stays upright relative to the visible page.
+      const totalRotationDegrees = -rotationDegrees + pageRotationInDegrees;
+      const totalRotationRadians = (totalRotationDegrees * Math.PI) / 180;
+
+      const cos = Math.cos(totalRotationRadians);
+      const sin = Math.sin(totalRotationRadians);
+
+      const halfW = imageWidth / 2;
+      const halfH = imageHeight / 2;
+
+      // Rotate the (-halfW, -halfH) corner offset.
+      const rotatedOffsetX = -halfW * cos - -halfH * sin;
+      const rotatedOffsetY = -halfW * sin + -halfH * cos;
+
+      let anchorX = centreX + rotatedOffsetX;
+      let anchorY = centreY + rotatedOffsetY;
+
+      if (pageRotationInDegrees !== 0) {
+        const adjustedPosition = adjustPositionForRotation(
+          pageWidth,
+          pageHeight,
+          anchorX,
+          anchorY,
+          pageRotationInDegrees,
+        );
+
+        anchorX = adjustedPosition.xPos;
+        anchorY = adjustedPosition.yPos;
+      }
+
+      page.drawImage(image, {
+        x: anchorX,
+        y: anchorY,
+        width: imageWidth,
+        height: imageHeight,
+        rotate: degrees(totalRotationDegrees),
+      });
+    })
     .with({ type: FieldType.CHECKBOX }, (field) => {
       const meta = ZCheckboxFieldMeta.safeParse(field.fieldMeta);
 

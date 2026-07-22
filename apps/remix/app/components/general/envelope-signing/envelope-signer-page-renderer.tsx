@@ -411,6 +411,13 @@ export const EnvelopeSignerPageRenderer = ({ pageData }: { pageData: PageRenderD
               loadingSpinnerGroup.destroy();
             });
         })
+        /**
+         * STAMP FIELD.
+         *
+         * Stamps are placed and filled by the author, so there is no recipient
+         * click action to perform.
+         */
+        .with({ type: FieldType.STAMP }, () => {})
         .exhaustive();
     };
 

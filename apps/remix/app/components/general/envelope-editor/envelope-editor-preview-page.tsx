@@ -195,6 +195,13 @@ export const EnvelopeEditorPreviewPage = () => {
               customText: '',
             };
           })
+          .with({ type: FieldType.STAMP }, () => {
+            // Stamps are author-filled; the image lives in fieldMeta and needs no
+            // placeholder value for the preview.
+            return {
+              customText: '',
+            };
+          })
           .exhaustive(),
       };
     });

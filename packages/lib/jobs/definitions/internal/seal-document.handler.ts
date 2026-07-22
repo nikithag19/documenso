@@ -9,7 +9,14 @@ import { prisma } from '@documenso/prisma';
 import { signPdf } from '@documenso/signing';
 import { PDF } from '@libpdf/core';
 import type { DocumentData, Envelope, EnvelopeItem, Field } from '@prisma/client';
-import { DocumentStatus, EnvelopeType, RecipientRole, SigningStatus, WebhookTriggerEvents } from '@prisma/client';
+import {
+  DocumentStatus,
+  EnvelopeType,
+  FieldType,
+  RecipientRole,
+  SigningStatus,
+  WebhookTriggerEvents,
+} from '@prisma/client';
 import { nanoid } from 'nanoid';
 import { groupBy } from 'remeda';
 
@@ -412,7 +419,13 @@ const decorateAndSignPdf = async ({
     const legacy_pdfLibDoc = await PDFDocument.load(await pdfDoc.save({ useXRefStream: true }));
 
     for (const field of envelopeItemFields) {
-      if (field.inserted) {
+      // Stamp fields are filled by the author rather than a recipient, so they
+      // may not be flagged as `inserted`. Seal them whenever they carry an image
+      // so the author's stamp always ends up in the final document.
+      const isStampWithImage =
+        field.type === FieldType.STAMP && Boolean((field.fieldMeta as { imageBase64?: string } | null)?.imageBase64);
+
+      if (field.inserted || isStampWithImage) {
         if (envelope.useLegacyFieldInsertion) {
           await legacy_insertFieldInPDF(legacy_pdfLibDoc, field);
         } else {
